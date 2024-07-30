@@ -1,0 +1,66 @@
+import requests
+import pandas as pd
+import matplotlib.pyplot as plt
+from datetime import datetime, timedelta
+
+class ChainRadar:
+    def __init__(self):
+        self.api_url = 'https://api.blockchain.info'
+
+    def get_blockchain_stats(self) -> dict:
+        """Fetches current statistics for the Bitcoin blockchain."""
+        url = f"{self.api_url}/stats"
+        response = requests.get(url)
+        return response.json()
+
+    def get_historical_data(self, timespan: str = '30days') -> pd.DataFrame:
+        """Fetches historical data for the Bitcoin blockchain."""
+        url = f"{self.api_url}/charts/transactions-per-second"
+        params = {
+            'timespan': timespan,
+            'format': 'json'
+        }
+        response = requests.get(url, params=params)
+        data = response.json().get('values', [])
+        df = pd.DataFrame(data)
+        df['x'] = pd.to_datetime(df['x'], unit='s')
+        df.rename(columns={'x': 'timestamp', 'y': 'transactions_per_second'}, inplace=True)
+        df.set_index('timestamp', inplace=True)
+        return df
+
+    def analyze_blockchain_metrics(self) -> dict:
+        """Analyzes key metrics like transaction count, hash rate, and market price."""
+        stats = self.get_blockchain_stats()
+        return {
+            'market_price_usd': stats.get('market_price_usd', 0),
+            'hash_rate': stats.get('hash_rate', 0),
+            'total_fees_btc': stats.get('total_fees_btc', 0),
+            'n_tx': stats.get('n_tx', 0)
+        }
+
+    def plot_transaction_trends(self, timespan: str = '30days'):
+        """Plots historical transaction trends for the Bitcoin blockchain."""
+        df = self.get_historical_data(timespan)
+        if df.empty:
+            print("No historical data found.")
+            return
+
+        plt.figure(figsize=(12, 6))
+        df['transactions_per_second'].plot()
+        plt.title('Bitcoin Transactions Per Second Trend')
+        plt.xlabel('Date')
+        plt.ylabel('Transactions Per Second')
+        plt.grid(True)
+        plt.show()
+
+# Example Usage
+if __name__ == "__main__":
+    chain_radar = ChainRadar()
+
+    # Fetch and Display Blockchain Metrics
+    blockchain_metrics = chain_radar.analyze_blockchain_metrics()
+    print("Current Blockchain Metrics:")
+    print(blockchain_metrics)
+
+    # Plot Historical Transaction Trends
+    chain_radar.plot_transaction_trends(timespan='30days')  # Last 30 days
